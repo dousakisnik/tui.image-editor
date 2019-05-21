@@ -6,11 +6,11 @@
  */
 export default ({locale, iconStyle: {normal, active}}) => (`
     <ul class="tui-image-editor-submenu-item">
-        <li>
+        <li class="tie-resize-canvas-input">
             <label> Width </label>
             <input id="tie-resize-canvas-width" type="number" value="">
         </li>
-        <li>
+        <li class="tie-resize-canvas-input">
             <label> Height </label>
             <input id="tie-resize-canvas-height" type="number" value="">
         </li>
