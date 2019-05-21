@@ -100,6 +100,12 @@ class Graphics {
         this.imageName = '';
 
         /**
+         * Zoom Value
+         * @type {number}
+         */
+        this.zoom = 1;
+
+        /**
          * Object Map
          * @type {Object}
          * @private
@@ -433,6 +439,30 @@ class Graphics {
      */
     adjustCanvasDimension() {
         const canvasImage = this.canvasImage.scale(1);
+        const {width, height} = canvasImage.getBoundingRect();
+        const maxDimension = this._calcMaxDimension(width, height);
+
+        this.setCanvasCssDimension({
+            width: '100%',
+            height: '100%', // Set height '' for IE9
+            'max-width': `${maxDimension.width}px`,
+            'max-height': `${maxDimension.height}px`
+        });
+
+        this.setCanvasBackstoreDimension({
+            width,
+            height
+        });
+        this._canvas.centerObject(canvasImage);
+    }
+
+    /**
+     * Adjust canvas dimension with zoom
+     * @param {number} zoom - Canvas Zoom
+     */
+    adjustCanvasZoomDimension(zoom) {
+        this.zoom = zoom;
+        const canvasImage = this.canvasImage.scale(zoom);
         const {width, height} = canvasImage.getBoundingRect();
         const maxDimension = this._calcMaxDimension(width, height);
 

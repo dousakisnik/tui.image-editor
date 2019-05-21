@@ -19,7 +19,8 @@ module.exports = {
         'TEXT',
         'ICON',
         'FILTER',
-        'SHAPE'
+        'SHAPE',
+        'RESIZE'
     ),
 
     /**
@@ -45,7 +46,8 @@ module.exports = {
         'ADD_IMAGE_OBJECT': 'addImageObject',
         'RESIZE_CANVAS_DIMENSION': 'resizeCanvasDimension',
         'SET_OBJECT_PROPERTIES': 'setObjectProperties',
-        'SET_OBJECT_POSITION': 'setObjectPosition'
+        'SET_OBJECT_POSITION': 'setObjectPosition',
+        'RESIZE_IMAGE': 'resizeImage'
     },
 
     /**

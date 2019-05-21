@@ -20,7 +20,8 @@ export default {
             mask: this._maskAction(),
             draw: this._drawAction(),
             icon: this._iconAction(),
-            filter: this._filterAction()
+            filter: this._filterAction(),
+            resize: this._resizeAction()
         };
     },
 
@@ -358,6 +359,25 @@ export default {
                         this.ui.crop.changeApplyButtonStatus(false);
                         break;
                 }
+            }
+        }, this._commonAction());
+    },
+
+    /**
+     * Resize Action
+     * @returns {Object} actions for ui resize
+     * @private
+     */
+    _resizeAction() {
+        return extend({
+            resize: dimension => {
+                this.resize(dimension).then(() => {
+                    this.ui.resizeEditor();
+                    this.ui.changeMenu('resize');
+                });
+            },
+            cancel: () => {
+                this.ui.changeMenu('resize');
             }
         }, this._commonAction());
     },

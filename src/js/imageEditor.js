@@ -781,6 +781,10 @@ class ImageEditor {
         return result;
     }
 
+    resize(dimension) {
+        return this.execute(commands.RESIZE_IMAGE, dimension);
+    }
+
     /**
      * Rotate image
      * @returns {Promise}
