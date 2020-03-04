@@ -17,6 +17,75 @@ const commands = consts.commandNames;
 const {keyCodes, rejectMessages} = consts;
 const {isUndefined, forEach, CustomEvents} = snippet;
 
+const {
+    MOUSE_DOWN,
+    OBJECT_MOVED,
+    OBJECT_SCALED,
+    OBJECT_ACTIVATED,
+    OBJECT_ROTATED,
+    ADD_TEXT,
+    ADD_OBJECT,
+    TEXT_EDITING,
+    TEXT_CHANGED,
+    ICON_CREATE_RESIZE,
+    ICON_CREATE_END,
+    SELECTION_CLEARED,
+    SELECTION_CREATED,
+    ADD_OBJECT_AFTER} = events;
+
+/**
+ * Image filter result
+ * @typedef {object} FilterResult
+ * @property {string} type - filter type like 'mask', 'Grayscale' and so on
+ * @property {string} action - action type like 'add', 'remove'
+ */
+
+/**
+ * Flip status
+ * @typedef {object} FlipStatus
+ * @property {boolean} flipX - x axis
+ * @property {boolean} flipY - y axis
+ * @property {Number} angle - angle
+ */
+/**
+ * Rotation status
+ * @typedef {Number} RotateStatus
+ * @property {Number} angle - angle
+ */
+
+/**
+ * Old and new Size
+ * @typedef {object} SizeChange
+ * @property {Number} oldWidth - old width
+ * @property {Number} oldHeight - old height
+ * @property {Number} newWidth - new width
+ * @property {Number} newHeight - new height
+ */
+
+/**
+ * @typedef {string} ErrorMsg - {string} error message
+ */
+
+/**
+ * @typedef {object} ObjectProps - graphics object properties
+ * @property {number} id - object id
+ * @property {string} type - object type
+ * @property {string} text - text content
+ * @property {(string | number)} left - Left
+ * @property {(string | number)} top - Top
+ * @property {(string | number)} width - Width
+ * @property {(string | number)} height - Height
+ * @property {string} fill - Color
+ * @property {string} stroke - Stroke
+ * @property {(string | number)} strokeWidth - StrokeWidth
+ * @property {string} fontFamily - Font type for text
+ * @property {number} fontSize - Font Size
+ * @property {string} fontStyle - Type of inclination (normal / italic)
+ * @property {string} fontWeight - Type of thicker or thinner looking (normal / bold)
+ * @property {string} textAlign - Type of text align (left / center / right)
+ * @property {string} textDecoration - Type of line (underline / line-through / overline)
+ */
+
 /**
  * Image editor
  * @class
@@ -27,12 +96,12 @@ const {isUndefined, forEach, CustomEvents} = snippet;
  *      @param {string} options.includeUI.loadImage.path - image path
  *      @param {string} options.includeUI.loadImage.name - image name
  *    @param {Object} [options.includeUI.theme] - Theme object
- *    @param {Array} [options.includeUI.menu] - It can be selected when only specific menu is used. [default all]
+ *    @param {Array} [options.includeUI.menu] - It can be selected when only specific menu is used, Default values are \['crop', 'flip', 'rotate', 'draw', 'shape', 'icon', 'text', 'mask', 'filter'\].
  *    @param {string} [options.includeUI.initMenu] - The first menu to be selected and started.
  *    @param {Object} [options.includeUI.uiSize] - ui size of editor
  *      @param {string} options.includeUI.uiSize.width - width of ui
  *      @param {string} options.includeUI.uiSize.height - height of ui
- *    @param {string} [options.includeUI.menuBarPosition=bottom] - Menu bar position [top | bottom | left | right]
+ *    @param {string} [options.includeUI.menuBarPosition=bottom] - Menu bar position('top', 'bottom', 'left', 'right')
  *  @param {number} options.cssMaxWidth - Canvas css-max-width
  *  @param {number} options.cssMaxHeight - Canvas css-max-height
  *  @param {Object} [options.selectionStyle] - selection style
@@ -87,7 +156,10 @@ class ImageEditor {
          * @type {Ui}
          */
         if (options.includeUI) {
-            this.ui = new UI(wrapper, options.includeUI, this.getActions());
+            const UIOption = options.includeUI;
+            UIOption.usageStatistics = options.usageStatistics;
+
+            this.ui = new UI(wrapper, UIOption, this.getActions());
             options = this.ui.setUiDefaultSelectionStyle(options);
         }
 
@@ -123,6 +195,7 @@ class ImageEditor {
             objectActivated: this._onObjectActivated.bind(this),
             objectMoved: this._onObjectMoved.bind(this),
             objectScaled: this._onObjectScaled.bind(this),
+            objectRotated: this._onObjectRotated.bind(this),
             createdPath: this._onCreatedPath,
             addText: this._onAddText.bind(this),
             addObject: this._onAddObject.bind(this),
@@ -153,59 +226,6 @@ class ImageEditor {
         }
         fabric.enableGLFiltering = false;
     }
-
-    /**
-     * Image filter result
-     * @typedef {Object} FilterResult
-     * @property {string} type - filter type like 'mask', 'Grayscale' and so on
-     * @property {string} action - action type like 'add', 'remove'
-     */
-
-    /**
-     * Flip status
-     * @typedef {Object} FlipStatus
-     * @property {boolean} flipX - x axis
-     * @property {boolean} flipY - y axis
-     * @property {Number} angle - angle
-     */
-    /**
-     * Rotation status
-     * @typedef {Number} RotateStatus
-     * @property {Number} angle - angle
-     */
-
-    /**
-     * Old and new Size
-     * @typedef {Object} SizeChange
-     * @property {Number} oldWidth - old width
-     * @property {Number} oldHeight - old height
-     * @property {Number} newWidth - new width
-     * @property {Number} newHeight - new height
-     */
-
-    /**
-     * @typedef {string} ErrorMsg - {string} error message
-     */
-
-    /**
-     * @typedef {Object} ObjectProps - graphics object properties
-     * @property {number} id - object id
-     * @property {string} type - object type
-     * @property {string} text - text content
-     * @property {(string | number)} left - Left
-     * @property {(string | number)} top - Top
-     * @property {(string | number)} width - Width
-     * @property {(string | number)} height - Height
-     * @property {string} fill - Color
-     * @property {string} stroke - Stroke
-     * @property {(string | number)} strokeWidth - StrokeWidth
-     * @property {string} fontFamily - Font type for text
-     * @property {number} fontSize - Font Size
-     * @property {string} fontStyle - Type of inclination (normal / italic)
-     * @property {string} fontWeight - Type of thicker or thinner looking (normal / bold)
-     * @property {string} textAlign - Type of text align (left / center / right)
-     * @property {string} textDecoraiton - Type of line (underline / line-throgh / overline)
-     */
 
     /**
      * Set selection style by init option
@@ -271,19 +291,20 @@ class ImageEditor {
      */
     _attachGraphicsEvents() {
         this._graphics.on({
-            'mousedown': this._handlers.mousedown,
-            'objectMoved': this._handlers.objectMoved,
-            'objectScaled': this._handlers.objectScaled,
-            'objectActivated': this._handlers.objectActivated,
-            'addText': this._handlers.addText,
-            'addObject': this._handlers.addObject,
-            'textEditing': this._handlers.textEditing,
-            'textChanged': this._handlers.textChanged,
-            'iconCreateResize': this._handlers.iconCreateResize,
-            'iconCreateEnd': this._handlers.iconCreateEnd,
-            'selectionCleared': this._handlers.selectionCleared,
-            'selectionCreated': this._handlers.selectionCreated,
-            'addObjectAfter': this._handlers.addObjectAfter
+            [MOUSE_DOWN]: this._handlers.mousedown,
+            [OBJECT_MOVED]: this._handlers.objectMoved,
+            [OBJECT_SCALED]: this._handlers.objectScaled,
+            [OBJECT_ROTATED]: this._handlers.objectRotated,
+            [OBJECT_ACTIVATED]: this._handlers.objectActivated,
+            [ADD_TEXT]: this._handlers.addText,
+            [ADD_OBJECT]: this._handlers.addObject,
+            [TEXT_EDITING]: this._handlers.textEditing,
+            [TEXT_CHANGED]: this._handlers.textChanged,
+            [ICON_CREATE_RESIZE]: this._handlers.iconCreateResize,
+            [ICON_CREATE_END]: this._handlers.iconCreateEnd,
+            [SELECTION_CLEARED]: this._handlers.selectionCleared,
+            [SELECTION_CREATED]: this._handlers.selectionCreated,
+            [ADD_OBJECT_AFTER]: this._handlers.addObjectAfter
         });
     }
 
@@ -313,13 +334,15 @@ class ImageEditor {
     /* eslint-disable complexity */
     _onKeyDown(e) {
         const {ctrlKey, keyCode, metaKey} = e;
-        const activeObject = this._graphics.getActiveObject();
-        const activeObjectGroup = this._graphics.getActiveObjects();
-        const existRemoveObject = activeObject || (activeObjectGroup && activeObjectGroup.size());
         const isModifierKey = (ctrlKey || metaKey);
 
         if (isModifierKey) {
-            if (keyCode === keyCodes.Z) {
+            if (keyCode === keyCodes.C) {
+                this._graphics.resetTargetObjectForCopyPaste();
+            } else if (keyCode === keyCodes.V) {
+                this._graphics.pasteObject();
+                this.clearRedoStack();
+            } else if (keyCode === keyCodes.Z) {
                 // There is no error message on shortcut when it's empty
                 this.undo()['catch'](() => {
                 });
@@ -331,47 +354,21 @@ class ImageEditor {
         }
 
         const isDeleteKey = keyCode === keyCodes.BACKSPACE || keyCode === keyCodes.DEL;
-        const isEditing = activeObject && activeObject.isEditing;
+        const isRemoveReady = this._graphics.isReadyRemoveObject();
 
-        if (!isEditing && isDeleteKey && existRemoveObject) {
+        if (isRemoveReady && isDeleteKey) {
             e.preventDefault();
             this.removeActiveObject();
         }
     }
-    /* eslint-enable complexity */
 
     /**
      * Remove Active Object
      */
     removeActiveObject() {
-        const activeObject = this._graphics.getActiveObject();
-        const activeObjectGroup = this._graphics.getActiveObjects();
+        const activeObjectId = this._graphics.getActiveObjectIdForRemove();
 
-        if (activeObjectGroup && activeObjectGroup.size()) {
-            this.discardSelection();
-            this._removeObjectStream(activeObjectGroup.getObjects());
-        } else if (activeObject) {
-            const activeObjectId = this._graphics.getObjectId(activeObject);
-            this.removeObject(activeObjectId);
-        }
-    }
-
-    /**
-     * RemoveObject Sequential processing for prevent invoke lock
-     * @param {Array.<Object>} targetObjects - target Objects for remove
-     * @returns {object} targetObjects
-     * @private
-     */
-    _removeObjectStream(targetObjects) {
-        if (!targetObjects.length) {
-            return true;
-        }
-
-        const targetObject = targetObjects.pop();
-
-        return this.removeObject(this._graphics.getObjectId(targetObject)).then(() => (
-            this._removeObjectStream(targetObjects)
-        ));
+        this.removeObject(activeObjectId);
     }
 
     /**
@@ -471,6 +468,25 @@ class ImageEditor {
          * });
          */
         this.fire(events.OBJECT_SCALED, props);
+    }
+
+    /**
+     * 'objectRotated' event handler
+     * @param {ObjectProps} props - object properties
+     * @private
+     */
+    _onObjectRotated(props) {
+        /**
+         * The event when object angle is changed
+         * @event ImageEditor#objectRotated
+         * @param {ObjectProps} props - object properties
+         * @example
+         * imageEditor.on('objectRotated', function(props) {
+         *     console.log(props);
+         *     console.log(props.type);
+         * });
+         */
+        this.fire(events.OBJECT_ROTATED, props);
     }
 
     /**
@@ -948,6 +964,7 @@ class ImageEditor {
      *      @param {number} [options.rx] - Radius x value (When type option is 'circle', this options can use)
      *      @param {number} [options.ry] - Radius y value (When type option is 'circle', this options can use)
      *      @param {boolean} [options.isRegular] - Whether resizing shape has 1:1 ratio or not
+     * @param {boolean} isSilent - is silent execution or not
      * @returns {Promise}
      * @example
      * // call after selecting shape object on canvas
@@ -968,8 +985,10 @@ class ImageEditor {
      *     ry: 100
      * });
      */
-    changeShape(id, options) {
-        return this.execute(commands.CHANGE_SHAPE, id, options);
+    changeShape(id, options, isSilent) {
+        const executeMethodName = isSilent ? 'executeSilent' : 'execute';
+
+        return this[executeMethodName](commands.CHANGE_SHAPE, id, options);
     }
 
     /**
@@ -983,7 +1002,7 @@ class ImageEditor {
      *         @param {string} [options.styles.fontStyle] Type of inclination (normal / italic)
      *         @param {string} [options.styles.fontWeight] Type of thicker or thinner looking (normal / bold)
      *         @param {string} [options.styles.textAlign] Type of text align (left / center / right)
-     *         @param {string} [options.styles.textDecoraiton] Type of line (underline / line-throgh / overline)
+     *         @param {string} [options.styles.textDecoration] Type of line (underline / line-through / overline)
      *     @param {{x: number, y: number}} [options.position] - Initial position
      * @returns {Promise}
      * @example
@@ -1034,15 +1053,18 @@ class ImageEditor {
      *     @param {string} [styleObj.fontStyle] Type of inclination (normal / italic)
      *     @param {string} [styleObj.fontWeight] Type of thicker or thinner looking (normal / bold)
      *     @param {string} [styleObj.textAlign] Type of text align (left / center / right)
-     *     @param {string} [styleObj.textDecoraiton] Type of line (underline / line-throgh / overline)
+     *     @param {string} [styleObj.textDecoration] Type of line (underline / line-through / overline)
+     * @param {boolean} isSilent - is silent execution or not
      * @returns {Promise}
      * @example
      * imageEditor.changeTextStyle(id, {
      *     fontStyle: 'italic'
      * });
      */
-    changeTextStyle(id, styleObj) {
-        return this.execute(commands.CHANGE_TEXT_STYLE, id, styleObj);
+    changeTextStyle(id, styleObj, isSilent) {
+        const executeMethodName = isSilent ? 'executeSilent' : 'execute';
+
+        return this[executeMethodName](commands.CHANGE_TEXT_STYLE, id, styleObj);
     }
 
     /**
@@ -1269,6 +1291,7 @@ class ImageEditor {
      * @param {string} type - Filter type
      * @param {Object} options - Options to apply filter
      *  @param {number} options.maskObjId - masking image object id
+     * @param {boolean} isSilent - is silent execution or not
      * @returns {Promise<FilterResult, ErrorMsg>}
      * @example
      * imageEditor.applyFilter('Grayscale');
@@ -1280,8 +1303,10 @@ class ImageEditor {
      *     console.log('error: ', message);
      * });;
      */
-    applyFilter(type, options) {
-        return this.execute(commands.APPLY_FILTER, type, options);
+    applyFilter(type, options, isSilent) {
+        const executeMethodName = isSilent ? 'executeSilent' : 'execute';
+
+        return this[executeMethodName](commands.APPLY_FILTER, type, options);
     }
 
     /**
@@ -1373,6 +1398,10 @@ class ImageEditor {
         this._detachDomEvents();
         this._graphics.destroy();
         this._graphics = null;
+
+        if (this.ui) {
+            this.ui.destroy();
+        }
 
         forEach(this, (value, key) => {
             this[key] = null;

@@ -2,7 +2,7 @@ import Colorpicker from './tools/colorpicker';
 import Range from './tools/range';
 import Submenu from './submenuBase';
 import templateHtml from './template/submenu/shape';
-import {toInteger} from '../util';
+import {toInteger, assignmentForDestroy} from '../util';
 import {defaultShapeStrokeValus} from '../consts';
 
 const SHAPE_DEFAULT_OPTION = {
@@ -17,28 +17,47 @@ const SHAPE_DEFAULT_OPTION = {
  * @ignore
  */
 class Shape extends Submenu {
-    constructor(subMenuElement, {locale, iconStyle, menuBarPosition}) {
+    constructor(subMenuElement, {locale, iconStyle, menuBarPosition, usageStatistics}) {
         super(subMenuElement, {
             locale,
             name: 'shape',
             iconStyle,
             menuBarPosition,
-            templateHtml
+            templateHtml,
+            usageStatistics
         });
         this.type = null;
         this.options = SHAPE_DEFAULT_OPTION;
 
         this._els = {
-            shapeSelectButton: this.selector('#tie-shape-button'),
-            shapeColorButton: this.selector('#tie-shape-color-button'),
-            strokeRange: new Range(this.selector('#tie-stroke-range'), defaultShapeStrokeValus),
-            strokeRangeValue: this.selector('#tie-stroke-range-value'),
-            fillColorpicker: new Colorpicker(this.selector('#tie-color-fill'), '', this.toggleDirection),
-            strokeColorpicker: new Colorpicker(this.selector('#tie-color-stroke'), '#ffbb3b', this.toggleDirection)
+            shapeSelectButton: this.selector('.tie-shape-button'),
+            shapeColorButton: this.selector('.tie-shape-color-button'),
+            strokeRange: new Range({
+                slider: this.selector('.tie-stroke-range'),
+                input: this.selector('.tie-stroke-range-value')
+            }, defaultShapeStrokeValus),
+            fillColorpicker: new Colorpicker(
+                this.selector('.tie-color-fill'), '', this.toggleDirection, this.usageStatistics
+            ),
+            strokeColorpicker: new Colorpicker(
+                this.selector('.tie-color-stroke'), '#ffbb3b', this.toggleDirection, this.usageStatistics
+            )
         };
 
         this.colorPickerControls.push(this._els.fillColorpicker);
         this.colorPickerControls.push(this._els.strokeColorpicker);
+    }
+
+    /**
+     * Destroys the instance.
+     */
+    destroy() {
+        this._removeEvent();
+        this._els.strokeRange.destroy();
+        this._els.fillColorpicker.destroy();
+        this._els.strokeColorpicker.destroy();
+
+        assignmentForDestroy(this);
     }
 
     /**
@@ -48,16 +67,26 @@ class Shape extends Submenu {
      *   @param {Function} actions.setDrawingShape - set dreawing shape
      */
     addEvent(actions) {
+        this.eventHandler.shapeTypeSelected = this._changeShapeHandler.bind(this);
         this.actions = actions;
 
-        this._els.shapeSelectButton.addEventListener('click', this._changeShapeHandler.bind(this));
+        this._els.shapeSelectButton.addEventListener('click', this.eventHandler.shapeTypeSelected);
         this._els.strokeRange.on('change', this._changeStrokeRangeHandler.bind(this));
         this._els.fillColorpicker.on('change', this._changeFillColorHandler.bind(this));
         this._els.strokeColorpicker.on('change', this._changeStrokeColorHandler.bind(this));
         this._els.fillColorpicker.on('changeShow', this.colorPickerChangeShow.bind(this));
         this._els.strokeColorpicker.on('changeShow', this.colorPickerChangeShow.bind(this));
-        this._els.strokeRangeValue.value = this._els.strokeRange.value;
-        this._els.strokeRangeValue.setAttribute('readonly', true);
+    }
+
+    /**
+     * Remove event
+     * @private
+     */
+    _removeEvent() {
+        this._els.shapeSelectButton.removeEventListener('click', this.eventHandler.shapeTypeSelected);
+        this._els.strokeRange.off();
+        this._els.fillColorpicker.off();
+        this._els.strokeColorpicker.off();
     }
 
     /**
@@ -69,13 +98,13 @@ class Shape extends Submenu {
      */
     setShapeStatus({strokeWidth, strokeColor, fillColor}) {
         this._els.strokeRange.value = strokeWidth;
-        this._els.strokeRange.trigger('change');
-
         this._els.strokeColorpicker.color = strokeColor;
         this._els.fillColorpicker.color = fillColor;
         this.options.stroke = strokeColor;
         this.options.fill = fillColor;
         this.options.strokeWidth = strokeWidth;
+
+        this.actions.setDrawingShape(this.type, {strokeWidth});
     }
 
     /**
@@ -153,15 +182,14 @@ class Shape extends Submenu {
     /**
      * Change stroke range
      * @param {number} value - stroke range value
+     * @param {boolean} isLast - Is last change
      * @private
      */
-    _changeStrokeRangeHandler(value) {
+    _changeStrokeRangeHandler(value, isLast) {
         this.options.strokeWidth = toInteger(value);
-        this._els.strokeRangeValue.value = toInteger(value);
-
         this.actions.changeShape({
             strokeWidth: value
-        });
+        }, !isLast);
 
         this.actions.setDrawingShape(this.type, this.options);
     }

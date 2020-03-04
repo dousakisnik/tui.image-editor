@@ -4,7 +4,7 @@
  */
 import snippet from 'tui-code-snippet';
 import Promise from 'core-js/library/es6/promise';
-import {fabric} from 'fabric';
+import fabric from 'fabric';
 import ImageLoader from './component/imageLoader';
 import Cropper from './component/cropper';
 import Flip from './component/flip';
@@ -31,6 +31,7 @@ const {extend, stamp, isArray, isString, forEachArray, forEachOwnProperties, Cus
 
 const DEFAULT_CSS_MAX_WIDTH = 1000;
 const DEFAULT_CSS_MAX_HEIGHT = 800;
+const EXTRA_PX_FOR_PASTE = 10;
 
 const cssOnly = {
     cssOnly: true
@@ -94,6 +95,13 @@ class Graphics {
         this.cropSelectionStyle = {};
 
         /**
+         * target fabric object for copy paste feature
+         * @type {fabric.Object}
+         * @private
+         */
+        this.targetObjectForCopyPaste = null;
+
+        /**
          * Image name
          * @type {string}
          */
@@ -151,6 +159,7 @@ class Graphics {
             onObjectRemoved: this._onObjectRemoved.bind(this),
             onObjectMoved: this._onObjectMoved.bind(this),
             onObjectScaled: this._onObjectScaled.bind(this),
+            onObjectRotated: this._onObjectRotated.bind(this),
             onObjectSelected: this._onObjectSelected.bind(this),
             onPathCreated: this._onPathCreated.bind(this),
             onSelectionCleared: this._onSelectionCleared.bind(this),
@@ -313,6 +322,34 @@ class Graphics {
     }
 
     /**
+     * Returns the object ID to delete the object.
+     * @returns {number} object id for remove
+     */
+    getActiveObjectIdForRemove() {
+        const activeObject = this.getActiveObject();
+        const isSelection = activeObject.type === 'activeSelection';
+
+        if (isSelection) {
+            const group = new fabric.Group();
+            group.add(...activeObject.getObjects());
+
+            return this._addFabricObject(group);
+        }
+
+        return this.getObjectId(activeObject);
+    }
+
+    /**
+     * Verify that you are ready to erase the object.
+     * @returns {boolean} ready for object remove
+     */
+    isReadyRemoveObject() {
+        const activeObject = this.getActiveObject();
+
+        return activeObject && !activeObject.isEditing;
+    }
+
+    /**
      * Gets an active group object
      * @returns {Object} active group object instance
      */
@@ -320,6 +357,17 @@ class Graphics {
         const activeObject = this._canvas._activeObject;
 
         return activeObject && activeObject.type === 'activeSelection' ? activeObject : null;
+    }
+
+    /**
+     * Get Active object Selection from object ids
+     * @param {Array.<Object>} objects - fabric objects
+     * @returns {Object} target - target object group
+     */
+    getActiveSelectionFromObjects(objects) {
+        const canvas = this.getCanvas();
+
+        return new fabric.ActiveSelection(objects, {canvas});
     }
 
     /**
@@ -409,7 +457,13 @@ class Graphics {
      * @returns {string} A DOMString containing the requested data URI.
      */
     toDataURL(options) {
-        return this._canvas && this._canvas.toDataURL(options);
+        const cropper = this.getComponent(components.CROPPER);
+        cropper.changeVisibility(false);
+
+        const dataUrl = this._canvas && this._canvas.toDataURL(options);
+        cropper.changeVisibility(true);
+
+        return dataUrl;
     }
 
     /**
@@ -687,7 +741,7 @@ class Graphics {
      *     @param {string} [props.fontStyle] Type of inclination (normal / italic)
      *     @param {string} [props.fontWeight] Type of thicker or thinner looking (normal / bold)
      *     @param {string} [props.textAlign] Type of text align (left / center / right)
-     *     @param {string} [props.textDecoraiton] Type of line (underline / line-throgh / overline)
+     *     @param {string} [props.textDecoration] Type of line (underline / line-through / overline)
      * @returns {Object} applied properties
      */
     setObjectProperties(id, props) {
@@ -941,6 +995,7 @@ class Graphics {
             'object:removed': handler.onObjectRemoved,
             'object:moving': handler.onObjectMoved,
             'object:scaling': handler.onObjectScaled,
+            'object:rotating': handler.onObjectRotated,
             'object:selected': handler.onObjectSelected,
             'path:created': handler.onPathCreated,
             'selection:cleared': handler.onSelectionCleared,
@@ -990,10 +1045,7 @@ class Graphics {
      * @private
      */
     _onObjectMoved(fEvent) {
-        const {target} = fEvent;
-        const params = this.createObjectProperties(target);
-
-        this.fire(events.OBJECT_MOVED, params);
+        this._lazyFire(events.OBJECT_MOVED, object => this.createObjectProperties(object), fEvent.target);
     }
 
     /**
@@ -1002,10 +1054,38 @@ class Graphics {
      * @private
      */
     _onObjectScaled(fEvent) {
-        const {target} = fEvent;
-        const params = this.createObjectProperties(target);
+        this._lazyFire(events.OBJECT_SCALED, object => this.createObjectProperties(object), fEvent.target);
+    }
 
-        this.fire(events.OBJECT_SCALED, params);
+    /**
+     * "object:rotating" canvas event handler
+     * @param {{target: fabric.Object, e: MouseEvent}} fEvent - Fabric event
+     * @private
+     */
+    _onObjectRotated(fEvent) {
+        this._lazyFire(events.OBJECT_ROTATED, object => this.createObjectProperties(object), fEvent.target);
+    }
+
+    /**
+     * Lazy event emitter
+     * @param {string} eventName - event name
+     * @param {Function} paramsMaker - make param function
+     * @param {Object} [target] - Object of the event owner.
+     * @private
+     */
+    _lazyFire(eventName, paramsMaker, target) {
+        const existEventDelegation = target && target.canvasEventDelegation;
+        const delegationState = existEventDelegation ? target.canvasEventDelegation(eventName) : 'none';
+
+        if (delegationState === 'unregisted') {
+            target.canvasEventRegister(eventName, object => {
+                this.fire(eventName, paramsMaker(object));
+            });
+        }
+
+        if (delegationState === 'none') {
+            this.fire(eventName, paramsMaker(target));
+        }
     }
 
     /**
@@ -1026,7 +1106,11 @@ class Graphics {
      * @private
      */
     _onPathCreated(obj) {
-        obj.path.set(consts.fObjectOptions.SELECTION_STYLE);
+        const {x: left, y: top} = obj.path.getCenterPoint();
+        obj.path.set(extend({
+            left,
+            top
+        }, consts.fObjectOptions.SELECTION_STYLE));
 
         const params = this.createObjectProperties(obj.path);
 
@@ -1083,7 +1167,8 @@ class Graphics {
             'fill',
             'stroke',
             'strokeWidth',
-            'opacity'
+            'opacity',
+            'angle'
         ];
         const props = {
             id: stamp(obj),
@@ -1112,7 +1197,8 @@ class Graphics {
             'fontSize',
             'fontStyle',
             'textAlign',
-            'textDecoration'
+            'textDecoration',
+            'fontWeight'
         ];
         const props = {};
         extend(props, util.getProperties(obj, predefinedKeys));
@@ -1138,6 +1224,113 @@ class Graphics {
      */
     _removeFabricObject(id) {
         delete this._objects[id];
+    }
+
+    /**
+     * Reset targetObjectForCopyPaste value from activeObject
+     */
+    resetTargetObjectForCopyPaste() {
+        const activeObject = this.getActiveObject();
+
+        if (activeObject) {
+            this.targetObjectForCopyPaste = activeObject;
+        }
+    }
+
+    /**
+     * Paste fabric object
+     * @returns {Promise}
+     */
+    pasteObject() {
+        if (!this.targetObjectForCopyPaste) {
+            return Promise.resolve([]);
+        }
+
+        const targetObject = this.targetObjectForCopyPaste;
+        const isGroupSelect = targetObject.type === 'activeSelection';
+        const targetObjects = isGroupSelect ? targetObject.getObjects() : [targetObject];
+        let newTargetObject = null;
+
+        this.discardSelection();
+
+        return this._cloneObject(targetObjects).then(addedObjects => {
+            if (addedObjects.length > 1) {
+                newTargetObject = this.getActiveSelectionFromObjects(addedObjects);
+            } else {
+                ([newTargetObject] = addedObjects);
+            }
+            this.targetObjectForCopyPaste = newTargetObject;
+            this.setActiveObject(newTargetObject);
+        });
+    }
+
+    /**
+     * Clone object
+     * @param {fabric.Object} targetObjects - fabric object
+     * @returns {Promise}
+     * @private
+     */
+    _cloneObject(targetObjects) {
+        const addedObjects = snippet.map(targetObjects, targetObject => (
+            this._cloneObjectItem(targetObject)
+        ));
+
+        return Promise.all(addedObjects);
+    }
+
+    /**
+     * Clone object one item
+     * @param {fabric.Object} targetObject - fabric object
+     * @returns {Promise}
+     * @private
+     */
+    _cloneObjectItem(targetObject) {
+        return this._copyFabricObjectForPaste(targetObject).then(clonedObject => {
+            const objectProperties = this.createObjectProperties(clonedObject);
+            this.add(clonedObject);
+
+            this.fire(events.ADD_OBJECT, objectProperties);
+
+            return clonedObject;
+        });
+    }
+
+    /**
+     * Copy fabric object with Changed position for copy and paste
+     * @param {fabric.Object} targetObject - fabric object
+     * @returns {Promise}
+     * @private
+     */
+    _copyFabricObjectForPaste(targetObject) {
+        const addExtraPx = (value, isReverse) => isReverse ? value - EXTRA_PX_FOR_PASTE : value + EXTRA_PX_FOR_PASTE;
+
+        return this._copyFabricObject(targetObject).then(clonedObject => {
+            const {left, top, width, height} = clonedObject;
+            const {width: canvasWidth, height: canvasHeight} = this.getCanvasSize();
+            const rightEdge = left + (width / 2);
+            const bottomEdge = top + (height / 2);
+
+            clonedObject.set(snippet.extend({
+                left: addExtraPx(left, rightEdge + EXTRA_PX_FOR_PASTE > canvasWidth),
+                top: addExtraPx(top, bottomEdge + EXTRA_PX_FOR_PASTE > canvasHeight)
+            }, consts.fObjectOptions.SELECTION_STYLE));
+
+            return clonedObject;
+        });
+    }
+
+    /**
+     * Copy fabric object
+     * @param {fabric.Object} targetObject - fabric object
+     * @returns {Promise}
+     * @private
+     */
+    _copyFabricObject(targetObject) {
+        return new Promise(resolve => {
+            targetObject.clone(cloned => {
+                resolve(cloned);
+            });
+        });
     }
 }
 
