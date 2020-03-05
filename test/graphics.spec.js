@@ -3,7 +3,7 @@
  * @fileoverview Tests command with command-factory
  */
 import snippet from 'tui-code-snippet';
-import {fabric} from 'fabric';
+import fabric from 'fabric';
 import Graphics from '../src/js/graphics';
 import consts from '../src/js/consts';
 
@@ -32,6 +32,20 @@ describe('Graphics', () => {
         expect(graphics.imageName).toBe('');
         expect(graphics._drawingMode).toBe(drawingModes.NORMAL);
         expect(graphics._componentMap).not.toBe(null);
+    });
+
+    it('After the path has been drawn, "origin" should change to "left top-> center center" and "position" should change to the center coordinates of path.', () => {
+        const pathObj = new fabric.Path('M 0 0 L 100 0 L 100 100 L 0 100 z');
+        const expectPosition = pathObj.getCenterPoint();
+        const expectX = expectPosition.x;
+        const expectY = expectPosition.y;
+
+        graphics._onPathCreated({path: pathObj});
+
+        expect(pathObj.originX).toBe('center');
+        expect(pathObj.originY).toBe('center');
+        expect(pathObj.left).toBe(expectX);
+        expect(pathObj.top).toBe(expectY);
     });
 
     it('can attach canvas events', () => {
@@ -124,6 +138,16 @@ describe('Graphics', () => {
         graphics.stopDrawingMode();
     });
 
+    it('Cropzone must be hidden initially and then redisplayed after completion at toDataURL is executed with a cropzone present', () => {
+        const cropper = graphics.getComponent(components.CROPPER);
+        spyOn(cropper, 'changeVisibility');
+
+        graphics.startDrawingMode(drawingModes.CROPPER);
+        graphics.toDataURL();
+
+        expect(cropper.changeVisibility.calls.allArgs()).toEqual([[false], [true]]);
+    });
+
     it('can set brush setting into LINE_DRAWING, FREE_DRAWING', () => {
         graphics.startDrawingMode(drawingModes.LINE_DRAWING);
         graphics.setBrush({
@@ -175,5 +199,38 @@ describe('Graphics', () => {
 
     it('has the filter', () => {
         expect(graphics.hasFilter('Grayscale')).toBe(false);
+    });
+
+    describe('pasteObject()', () => {
+        let targetObject1, targetObject2;
+
+        beforeEach(() => {
+            targetObject1 = new fabric.Object({});
+            targetObject2 = new fabric.Object({});
+
+            canvas.add(targetObject1);
+            canvas.add(targetObject2);
+        });
+
+        it('Group objects must be duplicated as many as the number of objects in the group.', done => {
+            const groupObject = graphics.getActiveSelectionFromObjects(canvas.getObjects());
+            graphics.setActiveObject(groupObject);
+            graphics.resetTargetObjectForCopyPaste();
+
+            graphics.pasteObject().then(() => {
+                expect(canvas.getObjects().length).toBe(4);
+                done();
+            });
+        });
+
+        it('Only one object should be duplicated.', done => {
+            graphics.setActiveObject(targetObject1);
+            graphics.resetTargetObjectForCopyPaste();
+
+            graphics.pasteObject().then(() => {
+                expect(canvas.getObjects().length).toBe(3);
+                done();
+            });
+        });
     });
 });

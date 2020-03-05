@@ -6,6 +6,12 @@ import util from './util';
 
 module.exports = {
     /**
+     * Editor help features
+     * @type {Array.<string>}
+     */
+    HELP_MENUS: ['undo', 'redo', 'reset', 'delete', 'deleteAll'],
+
+    /**
      * Component names
      * @type {Object.<string, string>}
      */
@@ -59,6 +65,7 @@ module.exports = {
         OBJECT_MOVED: 'objectMoved',
         OBJECT_SCALED: 'objectScaled',
         OBJECT_CREATED: 'objectCreated',
+        OBJECT_ROTATED: 'objectRotated',
         TEXT_EDITING: 'textEditing',
         TEXT_CHANGED: 'textChanged',
         ICON_CREATE_RESIZE: 'iconCreateResize',
@@ -96,9 +103,13 @@ module.exports = {
     keyCodes: {
         Z: 90,
         Y: 89,
+        C: 67,
+        V: 86,
         SHIFT: 16,
         BACKSPACE: 8,
-        DEL: 46
+        DEL: 46,
+        ARROW_DOWN: 40,
+        ARROW_UP: 38
     },
 
     /**
@@ -167,7 +178,7 @@ module.exports = {
     },
 
     defaultShapeStrokeValus: {
-        realTimeEvent: false,
+        realTimeEvent: true,
         min: 2,
         max: 300,
         value: 3
@@ -182,34 +193,44 @@ module.exports = {
 
     defaultFilterRangeValus: {
         tintOpacityRange: {
+            realTimeEvent: true,
             min: 0,
             max: 1,
-            value: 0.7
+            value: 0.7,
+            useDecimal: true
         },
         removewhiteDistanceRange: {
+            realTimeEvent: true,
             min: 0,
             max: 1,
-            value: 0.2
+            value: 0.2,
+            useDecimal: true
         },
         brightnessRange: {
+            realTimeEvent: true,
             min: -1,
             max: 1,
-            value: 0
+            value: 0,
+            useDecimal: true
         },
         noiseRange: {
+            realTimeEvent: true,
             min: 0,
             max: 1000,
             value: 100
         },
         pixelateRange: {
+            realTimeEvent: true,
             min: 2,
             max: 20,
             value: 4
         },
         colorfilterThresholeRange: {
+            realTimeEvent: true,
             min: 0,
             max: 1,
-            value: 0.2
+            value: 0.2,
+            useDecimal: true
         }
     }
 };

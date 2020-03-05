@@ -8,19 +8,29 @@ import templateHtml from './template/submenu/mask';
  * @ignore
  */
 class Mask extends Submenu {
-    constructor(subMenuElement, {locale, iconStyle, menuBarPosition}) {
+    constructor(subMenuElement, {locale, iconStyle, menuBarPosition, usageStatistics}) {
         super(subMenuElement, {
             locale,
             name: 'mask',
             iconStyle,
             menuBarPosition,
-            templateHtml
+            templateHtml,
+            usageStatistics
         });
 
         this._els = {
-            applyButton: this.selector('#tie-mask-apply'),
-            maskImageButton: this.selector('#tie-mask-image-file')
+            applyButton: this.selector('.tie-mask-apply'),
+            maskImageButton: this.selector('.tie-mask-image-file')
         };
+    }
+
+    /**
+     * Destroys the instance.
+     */
+    destroy() {
+        this._removeEvent();
+
+        util.assignmentForDestroy(this);
     }
 
     /**
@@ -30,9 +40,26 @@ class Mask extends Submenu {
      *   @param {Function} actions.applyFilter - apply filter action
      */
     addEvent(actions) {
+        const loadMaskFile = this._loadMaskFile.bind(this);
+        const applyMask = this._applyMask.bind(this);
+
+        this.eventHandler = {
+            loadMaskFile,
+            applyMask
+        };
+
         this.actions = actions;
-        this._els.maskImageButton.addEventListener('change', this._loadMaskFile.bind(this));
-        this._els.applyButton.addEventListener('click', this._applyMask.bind(this));
+        this._els.maskImageButton.addEventListener('change', loadMaskFile);
+        this._els.applyButton.addEventListener('click', applyMask);
+    }
+
+    /**
+     * Remove event
+     * @private
+     */
+    _removeEvent() {
+        this._els.maskImageButton.removeEventListener('change', this.eventHandler.loadMaskFile);
+        this._els.applyButton.removeEventListener('click', this.eventHandler.applyMask);
     }
 
     /**

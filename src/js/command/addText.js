@@ -5,8 +5,7 @@
 import commandFactory from '../factory/command';
 import Promise from 'core-js/library/es6/promise';
 import consts from '../consts';
-
-const {componentNames, commandNames} = consts;
+const {componentNames, commandNames, rejectMessages} = consts;
 const {TEXT} = componentNames;
 
 const command = {
@@ -24,15 +23,31 @@ const command = {
      *         @param {string} [options.styles.fontStyle] Type of inclination (normal / italic)
      *         @param {string} [options.styles.fontWeight] Type of thicker or thinner looking (normal / bold)
      *         @param {string} [options.styles.textAlign] Type of text align (left / center / right)
-     *         @param {string} [options.styles.textDecoraiton] Type of line (underline / line-throgh / overline)
+     *         @param {string} [options.styles.textDecoration] Type of line (underline / line-through / overline)
      *     @param {{x: number, y: number}} [options.position] - Initial position
      * @returns {Promise}
      */
     execute(graphics, text, options) {
         const textComp = graphics.getComponent(TEXT);
 
+        if (this.undoData.object) {
+            const undoObject = this.undoData.object;
+
+            return new Promise((resolve, reject) => {
+                if (!graphics.contains(undoObject)) {
+                    graphics.add(undoObject);
+                    resolve(undoObject);
+                } else {
+                    reject(rejectMessages.redo);
+                }
+            });
+        }
+
         return textComp.add(text, options).then(objectProps => {
-            this.undoData.object = graphics.getObject(objectProps.id);
+            const {id} = objectProps;
+            const textObject = graphics.getObject(id);
+
+            this.undoData.object = textObject;
 
             return objectProps;
         });

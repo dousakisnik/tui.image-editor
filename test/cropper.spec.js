@@ -3,10 +3,11 @@
  * @fileoverview Test cases of "src/js/component/cropper.js"
  */
 import snippet from 'tui-code-snippet';
-import {fabric} from 'fabric';
+import fabric from 'fabric';
 import $ from 'jquery';
 import Cropper from '../src/js/component/cropper';
 import Graphics from '../src/js/graphics';
+import consts from '../src/js/consts';
 
 describe('Cropper', () => {
     let cropper, graphics, canvas;
@@ -296,6 +297,16 @@ describe('Cropper', () => {
                 .toBe((16 / 9).toFixed(1));
         });
 
+        it('Even in situations with floating point problems, should calculate the exact width you expect.', () => {
+            spyOn(canvas, 'getWidth').and.returnValue(408);
+            spyOn(canvas, 'getHeight').and.returnValue(312);
+            spyOn(cropper._cropzone, 'set').and.callThrough();
+
+            cropper.setCropzoneRect(16 / 9);
+
+            expect(cropper._cropzone.set.calls.first().args[0].width).toBe(408);
+        });
+
         it('should remove cropzone of cropper when falsy is passed', () => {
             cropper.setCropzoneRect();
             expect(cropper.getCropzoneRect()).toBeFalsy();
@@ -329,6 +340,24 @@ describe('Cropper', () => {
             expect(objects[0].evented).toBe(true);
             expect(objects[1].evented).toBe(true);
             expect(objects[2].evented).toBe(true);
+        });
+    });
+    describe('canvas event delegator', () => {
+        it('The event of an object with an eventDelegator must fire the graphics.fire registered with the trigger.', () => {
+            cropper.start();
+            spyOn(graphics, 'fire');
+            const events = consts.eventNames;
+            const fEvent = {
+                target: cropper._cropzone
+            };
+
+            const cropzone = cropper._cropzone;
+
+            canvas.fire('object:scaling', fEvent);
+
+            expect(graphics.fire.calls.count()).toBe(0);
+            cropzone.canvasEventTrigger[events.OBJECT_SCALED](cropzone);
+            expect(graphics.fire.calls.count()).toBe(1);
         });
     });
 });

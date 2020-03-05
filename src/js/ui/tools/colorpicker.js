@@ -25,23 +25,37 @@ const PICKER_COLOR = [
  * @ignore
  */
 class Colorpicker {
-    constructor(colorpickerElement, defaultColor = '#7e7e7e', toggleDirection = 'up') {
-        const title = colorpickerElement.getAttribute('title');
+    constructor(colorpickerElement, defaultColor = '#7e7e7e', toggleDirection = 'up', usageStatistics) {
+        this.colorpickerElement = colorpickerElement;
+        this.usageStatistics = usageStatistics;
 
         this._show = false;
 
         this._colorpickerElement = colorpickerElement;
         this._toggleDirection = toggleDirection;
-        this._makePickerButtonElement(colorpickerElement, defaultColor);
-        this._makePickerLayerElement(colorpickerElement, title);
+        this._makePickerButtonElement(defaultColor);
+        this._makePickerLayerElement(colorpickerElement, colorpickerElement.getAttribute('title'));
         this._color = defaultColor;
         this.picker = tuiColorPicker.create({
             container: this.pickerElement,
             preset: PICKER_COLOR,
-            color: defaultColor
+            color: defaultColor,
+            usageStatistics: this.usageStatistics
         });
 
-        this._addEvent(colorpickerElement);
+        this._addEvent();
+    }
+
+    /**
+     * Destroys the instance.
+     */
+    destroy() {
+        this._removeEvent();
+        this.picker.destroy();
+        this.colorpickerElement.innerHTML = '';
+        snippet.forEach(this, (value, key) => {
+            this[key] = null;
+        });
     }
 
     /**
@@ -78,12 +92,11 @@ class Colorpicker {
 
     /**
      * Make picker button element
-     * @param {HTMLElement} colorpickerElement color picker element
      * @param {string} defaultColor color value
      * @private
      */
-    _makePickerButtonElement(colorpickerElement, defaultColor) {
-        colorpickerElement.classList.add('tui-image-editor-button');
+    _makePickerButtonElement(defaultColor) {
+        this.colorpickerElement.classList.add('tui-image-editor-button');
 
         this.colorElement = document.createElement('div');
         this.colorElement.className = 'color-picker-value';
@@ -123,30 +136,50 @@ class Colorpicker {
 
     /**
      * Add event
-     * @param {HTMLElement} colorpickerElement color picker element
      * @private
      */
-    _addEvent(colorpickerElement) {
+    _addEvent() {
         this.picker.on('selectColor', value => {
             this._changeColorElement(value.color);
             this._color = value.color;
             this.fire('change', value.color);
         });
-        colorpickerElement.addEventListener('click', event => {
-            const {target} = event;
-            const isInPickerControl = target && this._isElementInColorPickerControl(target);
 
-            if (!isInPickerControl || (isInPickerControl && this._isPaletteButton(target))) {
-                this._show = !this._show;
-                this.pickerControl.style.display = this._show ? 'block' : 'none';
-                this._setPickerControlPosition();
-                this.fire('changeShow', this);
-            }
-            event.stopPropagation();
-        });
-        document.body.addEventListener('click', () => {
-            this.hide();
-        });
+        this.eventHandler = {
+            pickerToggle: this._pickerToggleEventHandler.bind(this),
+            pickerHide: () => this.hide()
+        };
+
+        this.colorpickerElement.addEventListener('click', this.eventHandler.pickerToggle);
+        document.body.addEventListener('click', this.eventHandler.pickerHide);
+    }
+
+    /**
+     * Remove event
+     * @private
+     */
+    _removeEvent() {
+        this.colorpickerElement.removeEventListener('click', this.eventHandler.pickerToggle);
+        document.body.removeEventListener('click', this.eventHandler.pickerHide);
+        this.picker.off();
+    }
+
+    /**
+     * Picker toggle event handler
+     * @param {object} event - change event
+     * @private
+     */
+    _pickerToggleEventHandler(event) {
+        const {target} = event;
+        const isInPickerControl = target && this._isElementInColorPickerControl(target);
+
+        if (!isInPickerControl || (isInPickerControl && this._isPaletteButton(target))) {
+            this._show = !this._show;
+            this.pickerControl.style.display = this._show ? 'block' : 'none';
+            this._setPickerControlPosition();
+            this.fire('changeShow', this);
+        }
+        event.stopPropagation();
     }
 
     /**
