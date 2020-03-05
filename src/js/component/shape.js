@@ -2,7 +2,7 @@
  * @author NHN Ent. FE Development Team <dl_javascript@nhn.com>
  * @fileoverview Shape component
  */
-import {fabric} from 'fabric';
+import fabric from 'fabric';
 import Promise from 'core-js/library/es6/promise';
 import Component from '../interface/component';
 import consts from '../consts';
@@ -181,6 +181,7 @@ class Shape extends Component {
         return new Promise(resolve => {
             const canvas = this.getCanvas();
             options = this._extendOptions(options);
+
             const shapeObj = this._createInstance(type, options);
 
             this._bindEventOnShape(shapeObj);
@@ -359,6 +360,7 @@ class Shape extends Component {
             this._shapeObj.set({
                 isRegular: this._withShiftKey
             });
+
             resizeHelper.resize(shape, pointer);
             canvas.renderAll();
         }

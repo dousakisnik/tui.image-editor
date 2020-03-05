@@ -8,18 +8,19 @@ import templateHtml from './template/submenu/flip';
  * @ignore
  */
 class Flip extends Submenu {
-    constructor(subMenuElement, {locale, iconStyle, menuBarPosition}) {
+    constructor(subMenuElement, {locale, iconStyle, menuBarPosition, usageStatistics}) {
         super(subMenuElement, {
             locale,
             name: 'flip',
             iconStyle,
             menuBarPosition,
-            templateHtml
+            templateHtml,
+            usageStatistics
         });
         this.flipStatus = false;
 
         this._els = {
-            flipButton: this.selector('#tie-flip-button')
+            flipButton: this.selector('.tie-flip-button')
         };
     }
 

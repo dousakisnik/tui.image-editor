@@ -11,22 +11,25 @@ import {defaultIconPath} from '../consts';
  * @ignore
  */
 class Icon extends Submenu {
-    constructor(subMenuElement, {locale, iconStyle, menuBarPosition}) {
+    constructor(subMenuElement, {locale, iconStyle, menuBarPosition, usageStatistics}) {
         super(subMenuElement, {
             locale,
             name: 'icon',
             iconStyle,
             menuBarPosition,
-            templateHtml
+            templateHtml,
+            usageStatistics
         });
 
         this.iconType = null;
         this._iconMap = {};
 
         this._els = {
-            registIconButton: this.selector('#tie-icon-image-file'),
-            addIconButton: this.selector('#tie-icon-add-button'),
-            iconColorpicker: new Colorpicker(this.selector('#tie-icon-color'), '#ffbb3b', this.toggleDirection)
+            registIconButton: this.selector('.tie-icon-image-file'),
+            addIconButton: this.selector('.tie-icon-add-button'),
+            iconColorpicker: new Colorpicker(
+                this.selector('.tie-icon-color'), '#ffbb3b', this.toggleDirection, this.usageStatistics
+            )
         };
     }
 

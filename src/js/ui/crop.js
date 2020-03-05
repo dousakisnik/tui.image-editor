@@ -8,21 +8,22 @@ import templateHtml from './template/submenu/crop';
  * @ignore
  */
 class Crop extends Submenu {
-    constructor(subMenuElement, {locale, iconStyle, menuBarPosition}) {
+    constructor(subMenuElement, {locale, iconStyle, menuBarPosition, usageStatistics}) {
         super(subMenuElement, {
             locale,
             name: 'crop',
             iconStyle,
             menuBarPosition,
-            templateHtml
+            templateHtml,
+            usageStatistics
         });
 
         this.status = 'active';
 
         this._els = {
-            apply: this.selector('#tie-crop-button .apply'),
-            cancel: this.selector('#tie-crop-button .cancel'),
-            preset: this.selector('#tie-crop-preset-button')
+            apply: this.selector('.tie-crop-button .apply'),
+            cancel: this.selector('.tie-crop-button .cancel'),
+            preset: this.selector('.tie-crop-preset-button')
         };
 
         this.defaultPresetButton = this._els.preset.querySelector('.preset-none');

@@ -4,7 +4,7 @@
  */
 import snippet from 'tui-code-snippet';
 import Promise from 'core-js/library/es6/promise';
-import {fabric} from 'fabric';
+import fabric from 'fabric';
 import ImageLoader from './component/imageLoader';
 import Cropper from './component/cropper';
 import Flip from './component/flip';
@@ -409,7 +409,13 @@ class Graphics {
      * @returns {string} A DOMString containing the requested data URI.
      */
     toDataURL(options) {
-        return this._canvas && this._canvas.toDataURL(options);
+        const cropper = this.getComponent(components.CROPPER);
+        cropper.changeVisibility(false);
+
+        const dataUrl = this._canvas && this._canvas.toDataURL(options);
+        cropper.changeVisibility(true);
+
+        return dataUrl;
     }
 
     /**
@@ -687,7 +693,7 @@ class Graphics {
      *     @param {string} [props.fontStyle] Type of inclination (normal / italic)
      *     @param {string} [props.fontWeight] Type of thicker or thinner looking (normal / bold)
      *     @param {string} [props.textAlign] Type of text align (left / center / right)
-     *     @param {string} [props.textDecoraiton] Type of line (underline / line-throgh / overline)
+     *     @param {string} [props.textDecoration] Type of line (underline / line-through / overline)
      * @returns {Object} applied properties
      */
     setObjectProperties(id, props) {
@@ -990,10 +996,7 @@ class Graphics {
      * @private
      */
     _onObjectMoved(fEvent) {
-        const {target} = fEvent;
-        const params = this.createObjectProperties(target);
-
-        this.fire(events.OBJECT_MOVED, params);
+        this._lazyFire(events.OBJECT_MOVED, object => this.createObjectProperties(object), fEvent.target);
     }
 
     /**
@@ -1002,10 +1005,29 @@ class Graphics {
      * @private
      */
     _onObjectScaled(fEvent) {
-        const {target} = fEvent;
-        const params = this.createObjectProperties(target);
+        this._lazyFire(events.OBJECT_SCALED, object => this.createObjectProperties(object), fEvent.target);
+    }
 
-        this.fire(events.OBJECT_SCALED, params);
+    /**
+     * Lazy event emitter
+     * @param {string} eventName - event name
+     * @param {Function} paramsMaker - make param function
+     * @param {Object} [target] - Object of the event owner.
+     * @private
+     */
+    _lazyFire(eventName, paramsMaker, target) {
+        const existEventDelegation = target && target.canvasEventDelegation;
+        const delegationState = existEventDelegation ? target.canvasEventDelegation(eventName) : 'none';
+
+        if (delegationState === 'unregisted') {
+            target.canvasEventRegister(eventName, object => {
+                this.fire(eventName, paramsMaker(object));
+            });
+        }
+
+        if (delegationState === 'none') {
+            this.fire(eventName, paramsMaker(target));
+        }
     }
 
     /**
@@ -1026,7 +1048,11 @@ class Graphics {
      * @private
      */
     _onPathCreated(obj) {
-        obj.path.set(consts.fObjectOptions.SELECTION_STYLE);
+        const {x: left, y: top} = obj.path.getCenterPoint();
+        obj.path.set(extend({
+            left,
+            top
+        }, consts.fObjectOptions.SELECTION_STYLE));
 
         const params = this.createObjectProperties(obj.path);
 
@@ -1112,7 +1138,8 @@ class Graphics {
             'fontSize',
             'fontStyle',
             'textAlign',
-            'textDecoration'
+            'textDecoration',
+            'fontWeight'
         ];
         const props = {};
         extend(props, util.getProperties(obj, predefinedKeys));

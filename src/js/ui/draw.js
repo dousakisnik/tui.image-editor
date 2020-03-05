@@ -12,20 +12,25 @@ const DRAW_OPACITY = 0.7;
  * @ignore
  */
 class Draw extends Submenu {
-    constructor(subMenuElement, {locale, iconStyle, menuBarPosition}) {
+    constructor(subMenuElement, {locale, iconStyle, menuBarPosition, usageStatistics}) {
         super(subMenuElement, {
             locale,
             name: 'draw',
             iconStyle,
             menuBarPosition,
-            templateHtml
+            templateHtml,
+            usageStatistics
         });
 
         this._els = {
-            lineSelectButton: this.selector('#tie-draw-line-select-button'),
-            drawColorpicker: new Colorpicker(this.selector('#tie-draw-color'), '#00a9ff', this.toggleDirection),
-            drawRange: new Range(this.selector('#tie-draw-range'), defaultDrawRangeValus),
-            drawRangeValue: this.selector('#tie-draw-range-value')
+            lineSelectButton: this.selector('.tie-draw-line-select-button'),
+            drawColorpicker: new Colorpicker(
+                this.selector('.tie-draw-color'), '#00a9ff', this.toggleDirection, this.usageStatistics
+            ),
+            drawRange: new Range({
+                slider: this.selector('.tie-draw-range'),
+                input: this.selector('.tie-draw-range-value')
+            }, defaultDrawRangeValus)
         };
 
         this.type = null;
@@ -44,8 +49,6 @@ class Draw extends Submenu {
         this._els.lineSelectButton.addEventListener('click', this._changeDrawType.bind(this));
         this._els.drawColorpicker.on('change', this._changeDrawColor.bind(this));
         this._els.drawRange.on('change', this._changeDrawRange.bind(this));
-        this._els.drawRangeValue.value = this._els.drawRange.value;
-        this._els.drawRangeValue.setAttribute('readonly', true);
     }
 
     /**
@@ -122,8 +125,6 @@ class Draw extends Submenu {
      * @private
      */
     _changeDrawRange(value) {
-        value = util.toInteger(value);
-        this._els.drawRangeValue.value = value;
         this.width = value;
         if (!this.type) {
             this.changeStartMode();

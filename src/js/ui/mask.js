@@ -8,18 +8,19 @@ import templateHtml from './template/submenu/mask';
  * @ignore
  */
 class Mask extends Submenu {
-    constructor(subMenuElement, {locale, iconStyle, menuBarPosition}) {
+    constructor(subMenuElement, {locale, iconStyle, menuBarPosition, usageStatistics}) {
         super(subMenuElement, {
             locale,
             name: 'mask',
             iconStyle,
             menuBarPosition,
-            templateHtml
+            templateHtml,
+            usageStatistics
         });
 
         this._els = {
-            applyButton: this.selector('#tie-mask-apply'),
-            maskImageButton: this.selector('#tie-mask-image-file')
+            applyButton: this.selector('.tie-mask-apply'),
+            maskImageButton: this.selector('.tie-mask-image-file')
         };
     }
 

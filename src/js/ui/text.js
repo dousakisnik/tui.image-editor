@@ -2,7 +2,6 @@ import Range from './tools/range';
 import Colorpicker from './tools/colorpicker';
 import Submenu from './submenuBase';
 import templateHtml from './template/submenu/text';
-import {toInteger} from '../util';
 import {defaultTextRangeValus} from '../consts';
 
 /**
@@ -11,13 +10,14 @@ import {defaultTextRangeValus} from '../consts';
  * @ignore
  */
 class Text extends Submenu {
-    constructor(subMenuElement, {locale, iconStyle, menuBarPosition}) {
+    constructor(subMenuElement, {locale, iconStyle, menuBarPosition, usageStatistics}) {
         super(subMenuElement, {
             locale,
             name: 'text',
             iconStyle,
             menuBarPosition,
-            templateHtml
+            templateHtml,
+            usageStatistics
         });
         this.effect = {
             bold: false,
@@ -26,11 +26,15 @@ class Text extends Submenu {
         };
         this.align = 'left';
         this._els = {
-            textEffectButton: this.selector('#tie-text-effect-button'),
-            textAlignButton: this.selector('#tie-text-align-button'),
-            textColorpicker: new Colorpicker(this.selector('#tie-text-color'), '#ffbb3b', this.toggleDirection),
-            textRange: new Range(this.selector('#tie-text-range'), defaultTextRangeValus),
-            textRangeValue: this.selector('#tie-text-range-value')
+            textEffectButton: this.selector('.tie-text-effect-button'),
+            textAlignButton: this.selector('.tie-text-align-button'),
+            textColorpicker: new Colorpicker(
+                this.selector('.tie-text-color'), '#ffbb3b', this.toggleDirection, this.usageStatistics
+            ),
+            textRange: new Range({
+                slider: this.selector('.tie-text-range'),
+                input: this.selector('.tie-text-range-value')
+            }, defaultTextRangeValus)
         };
     }
 
@@ -44,8 +48,6 @@ class Text extends Submenu {
         this._els.textEffectButton.addEventListener('click', this._setTextEffectHandler.bind(this));
         this._els.textAlignButton.addEventListener('click', this._setTextAlignHandler.bind(this));
         this._els.textRange.on('change', this._changeTextRnageHandler.bind(this));
-        this._els.textRangeValue.value = this._els.textRange.value;
-        this._els.textRangeValue.setAttribute('readonly', true);
         this._els.textColorpicker.on('change', this._changeColorHandler.bind(this));
     }
 
@@ -61,6 +63,10 @@ class Text extends Submenu {
      */
     changeStartMode() {
         this.actions.modeChange('text');
+    }
+
+    set textColor(color) {
+        this._els.textColorpicker.color = color;
     }
 
     /**
@@ -85,7 +91,57 @@ class Text extends Submenu {
      */
     set fontSize(value) {
         this._els.textRange.value = value;
-        this._els.textRangeValue.value = value;
+    }
+
+    /**
+     * get font style
+     * @returns {string} - font style
+     */
+    get fontStyle() {
+        return this.effect.italic ? 'italic' : 'normal';
+    }
+
+    /**
+     * get font weight
+     * @returns {string} - font weight
+     */
+    get fontWeight() {
+        return this.effect.bold ? 'bold' : 'normal';
+    }
+
+    /**
+     * get text underline text underline
+     * @returns {boolean} - true or false
+     */
+    get underline() {
+        return this.effect.underline;
+    }
+
+    setTextStyleStateOnAction(textStyle = {}) {
+        const {fill, fontSize, fontStyle, fontWeight, textDecoration, textAlign} = textStyle;
+
+        this.textColor = fill;
+        this.fontSize = fontSize;
+        this.setEffactState('italic', fontStyle);
+        this.setEffactState('bold', fontWeight);
+        this.setEffactState('underline', textDecoration);
+        this.setAlignState(textAlign);
+    }
+
+    setEffactState(effactName, value) {
+        const effactValue = value === 'italic' || value === 'bold' || value === 'underline';
+        const button = this._els.textEffectButton.querySelector(`.tui-image-editor-button.${effactName}`);
+
+        this.effect[effactName] = effactValue;
+
+        button.classList[effactValue ? 'add' : 'remove']('active');
+    }
+
+    setAlignState(value) {
+        const button = this._els.textAlignButton;
+        button.classList.remove(this.align);
+        button.classList.add(value);
+        this.align = value;
     }
 
     /**
@@ -130,16 +186,13 @@ class Text extends Submenu {
     /**
      * text align set handler
      * @param {number} value - range value
+     * @param {boolean} isLast - Is last change
      * @private
      */
-    _changeTextRnageHandler(value) {
-        value = toInteger(value);
-        if (toInteger(this._els.textRangeValue.value) !== value) {
-            this.actions.changeTextStyle({
-                fontSize: value
-            });
-            this._els.textRangeValue.value = value;
-        }
+    _changeTextRnageHandler(value, isLast) {
+        this.actions.changeTextStyle({
+            fontSize: value
+        }, !isLast);
     }
 
     /**

@@ -27,12 +27,12 @@ const {isUndefined, forEach, CustomEvents} = snippet;
  *      @param {string} options.includeUI.loadImage.path - image path
  *      @param {string} options.includeUI.loadImage.name - image name
  *    @param {Object} [options.includeUI.theme] - Theme object
- *    @param {Array} [options.includeUI.menu] - It can be selected when only specific menu is used. [default all]
+ *    @param {Array} [options.includeUI.menu] - It can be selected when only specific menu is used, Default values are \['crop', 'flip', 'rotate', 'draw', 'shape', 'icon', 'text', 'mask', 'filter'\].
  *    @param {string} [options.includeUI.initMenu] - The first menu to be selected and started.
  *    @param {Object} [options.includeUI.uiSize] - ui size of editor
  *      @param {string} options.includeUI.uiSize.width - width of ui
  *      @param {string} options.includeUI.uiSize.height - height of ui
- *    @param {string} [options.includeUI.menuBarPosition=bottom] - Menu bar position [top | bottom | left | right]
+ *    @param {string} [options.includeUI.menuBarPosition=bottom] - Menu bar position('top', 'bottom', 'left', 'right')
  *  @param {number} options.cssMaxWidth - Canvas css-max-width
  *  @param {number} options.cssMaxHeight - Canvas css-max-height
  *  @param {Object} [options.selectionStyle] - selection style
@@ -87,7 +87,10 @@ class ImageEditor {
          * @type {Ui}
          */
         if (options.includeUI) {
-            this.ui = new UI(wrapper, options.includeUI, this.getActions());
+            const UIOption = options.includeUI;
+            UIOption.usageStatistics = options.usageStatistics;
+
+            this.ui = new UI(wrapper, UIOption, this.getActions());
             options = this.ui.setUiDefaultSelectionStyle(options);
         }
 
@@ -204,7 +207,7 @@ class ImageEditor {
      * @property {string} fontStyle - Type of inclination (normal / italic)
      * @property {string} fontWeight - Type of thicker or thinner looking (normal / bold)
      * @property {string} textAlign - Type of text align (left / center / right)
-     * @property {string} textDecoraiton - Type of line (underline / line-throgh / overline)
+     * @property {string} textDecoration - Type of line (underline / line-through / overline)
      */
 
     /**
@@ -948,6 +951,7 @@ class ImageEditor {
      *      @param {number} [options.rx] - Radius x value (When type option is 'circle', this options can use)
      *      @param {number} [options.ry] - Radius y value (When type option is 'circle', this options can use)
      *      @param {boolean} [options.isRegular] - Whether resizing shape has 1:1 ratio or not
+     * @param {boolean} isSilent - is silent execution or not
      * @returns {Promise}
      * @example
      * // call after selecting shape object on canvas
@@ -968,8 +972,10 @@ class ImageEditor {
      *     ry: 100
      * });
      */
-    changeShape(id, options) {
-        return this.execute(commands.CHANGE_SHAPE, id, options);
+    changeShape(id, options, isSilent) {
+        const executeMethodName = isSilent ? 'executeSilent' : 'execute';
+
+        return this[executeMethodName](commands.CHANGE_SHAPE, id, options);
     }
 
     /**
@@ -983,7 +989,7 @@ class ImageEditor {
      *         @param {string} [options.styles.fontStyle] Type of inclination (normal / italic)
      *         @param {string} [options.styles.fontWeight] Type of thicker or thinner looking (normal / bold)
      *         @param {string} [options.styles.textAlign] Type of text align (left / center / right)
-     *         @param {string} [options.styles.textDecoraiton] Type of line (underline / line-throgh / overline)
+     *         @param {string} [options.styles.textDecoration] Type of line (underline / line-through / overline)
      *     @param {{x: number, y: number}} [options.position] - Initial position
      * @returns {Promise}
      * @example
@@ -1034,15 +1040,18 @@ class ImageEditor {
      *     @param {string} [styleObj.fontStyle] Type of inclination (normal / italic)
      *     @param {string} [styleObj.fontWeight] Type of thicker or thinner looking (normal / bold)
      *     @param {string} [styleObj.textAlign] Type of text align (left / center / right)
-     *     @param {string} [styleObj.textDecoraiton] Type of line (underline / line-throgh / overline)
+     *     @param {string} [styleObj.textDecoration] Type of line (underline / line-through / overline)
+     * @param {boolean} isSilent - is silent execution or not
      * @returns {Promise}
      * @example
      * imageEditor.changeTextStyle(id, {
      *     fontStyle: 'italic'
      * });
      */
-    changeTextStyle(id, styleObj) {
-        return this.execute(commands.CHANGE_TEXT_STYLE, id, styleObj);
+    changeTextStyle(id, styleObj, isSilent) {
+        const executeMethodName = isSilent ? 'executeSilent' : 'execute';
+
+        return this[executeMethodName](commands.CHANGE_TEXT_STYLE, id, styleObj);
     }
 
     /**
@@ -1269,6 +1278,7 @@ class ImageEditor {
      * @param {string} type - Filter type
      * @param {Object} options - Options to apply filter
      *  @param {number} options.maskObjId - masking image object id
+     * @param {boolean} isSilent - is silent execution or not
      * @returns {Promise<FilterResult, ErrorMsg>}
      * @example
      * imageEditor.applyFilter('Grayscale');
@@ -1280,8 +1290,10 @@ class ImageEditor {
      *     console.log('error: ', message);
      * });;
      */
-    applyFilter(type, options) {
-        return this.execute(commands.APPLY_FILTER, type, options);
+    applyFilter(type, options, isSilent) {
+        const executeMethodName = isSilent ? 'executeSilent' : 'execute';
+
+        return this[executeMethodName](commands.APPLY_FILTER, type, options);
     }
 
     /**
